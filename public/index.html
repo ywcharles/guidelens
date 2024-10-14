@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="styles.css">
+  <title>Camera Capture</title>
+</head>
+<body>
+  <img src="logo.png" width="10%" height="10%"/>
+  <div id="image">Person close</div>
+
+  <video id="video" width="640" height="480" autoplay=""></video>
+  <canvas id="canvas" width="640" height="480" style="display: none"></canvas>
+
+  <script>
+    navigator.mediaDevices
+      .getUserMedia({ video: true })
+      .then(function (stream) {
+        var video = document.getElementById("video");
+        video.srcObject = stream;
+      })
+      .catch(function (err) {
+        console.error("Error accessing the camera:", err);
+      });
+
+    var previousData = '';
+
+    setInterval(function () {
+      var video = document.getElementById("video");
+      var canvas = document.getElementById("canvas");
+      var ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      var imgData = canvas.toDataURL("image/jpeg");
+
+      // Send image data to the server
+      fetch("/upload", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ image: imgData }),
+      })
+        .then((response) => console.log("Snapshot uploaded successfully"))
+        .catch((error) => console.error("Error uploading snapshot:", error));
+
+      // Call readFile function only if the content has changed
+      readFile();
+    }, 500);
+
+    function readFile() {
+      // Replace 'socket.txt' with the path to your .txt file
+      fetch('socket.txt')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return response.text();
+        })
+        .then(text => {
+          if (text !== previousData) {
+            document.getElementById("image").innerText = text;
+            speak(text);
+            previousData = text;
+          }
+        })
+        .catch(error => {
+          console.error('There was a problem fetching the file:', error);
+        });
+    }
+
+    function speak(data) {
+      console.log(data);
+      speakText(data);
+    }
+
+    // Function to speak the text
+    function speakText(text) {
+      var speech = new SpeechSynthesisUtterance();
+      speech.text = text;
+      speech.volume = 0.5;
+      speech.rate = 2.0;
+      speech.pitch = 1;
+      window.speechSynthesis.speak(speech);
+    }
+  </script>
+</body>
+</html>
